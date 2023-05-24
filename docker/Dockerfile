@@ -1,36 +1,34 @@
 FROM i386/debian:stretch
-RUN echo deb http://ftp.us.debian.org/debian/ stretch main > /etc/apt/sources.list
-RUN echo deb http://httpredir.debian.org/debian wheezy-backports main >> /etc/apt/sources.list
-RUN apt-get update
+
+RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20220630T220025Z/ stretch main" > /etc/apt/sources.list
+RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20220630T220025Z/ stretch-updates main" >> /etc/apt/sources.list
+RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20220630T220025Z/ stretch-backports main" >> /etc/apt/sources.list
+RUN apt-get update && apt-get remove -y libnettle6 libelf1 && \
+    apt-get install -y zlib1g=1:1.2.8.dfsg-5
 RUN apt-get install -y sudo build-essential python wget cmake gdb gawk mlocate \
-            vim libc++-dev  g++-multilib g++ ninja-build \
-            git jq bc python python-colorama zsh libjsoncpp-dev \
-            python-psycopg2 python-pexpect python-psutil \
+            vim libc++-dev  g++-multilib g++ ninja-build sudo gdb gawk\
+            git jq bc python python-colorama zsh libjsoncpp-dev zlib1g-dev \
+            python-psycopg2 python-pexpect python-psutil locales \
             python-numpy python-argparse python-pip python-dev libpq-dev
 ENV release 3.6.2
 ENV llvm_version llvm-${release}
 
-RUN wget http://llvm.org/releases/$release/$llvm_version.src.tar.xz
-RUN tar -xJf $llvm_version.src.tar.xz
-
-RUN mv $llvm_version.src $llvm_version
-RUN cd $llvm_version
+RUN wget http://llvm.org/releases/$release/$llvm_version.src.tar.xz && \
+    tar -xJf $llvm_version.src.tar.xz -C $llvm_version --strip-components=1 && \
+    rm $llvm_version.src.tar.xz
 
 WORKDIR /$llvm_version/tools
 ENV clang_version cfe-$release
-RUN wget http://llvm.org/releases/$release/$clang_version.src.tar.xz
-RUN tar -xJf $clang_version.src.tar.xz
-RUN mv $clang_version.src clang
+RUN wget http://llvm.org/releases/$release/$clang_version.src.tar.xz && \
+    tar -xJf $clang_version.src.tar.xz -C clang --strip-components=1 && \
+    rm $clang_version.src.tar.xz
 
 WORKDIR /$llvm_version/tools/clang/tools
-RUN wget http://llvm.org/releases/$release/clang-tools-extra-$release.src.tar.xz
-RUN tar -xJf clang-tools-extra-$release.src.tar.xz
-RUN mv clang-tools-extra-$release.src extra
+RUN wget http://llvm.org/releases/$release/clang-tools-extra-$release.src.tar.xz && \
+    tar -xJf clang-tools-extra-$release.src.tar.xz -C extra --strip-components=1 && \
+    rm clang-tools-extra-$release.src.tar.xz
 
-WORKDIR /$llvm_version
-#RUN ./configure --enable-optimized --disable-assertions --enable-targets=x86 --enable-shared --enable-pic --host=i486-linux-gnu --build=i486-linux-gnu
-RUN mkdir /$llvm_version/build
-RUN mkdir /$llvm_version/Release
+RUN mkdir /$llvm_version/build /$llvm_version/Release
 WORKDIR /$llvm_version/build
 RUN cmake ../ -DCMAKE_INSTALL_PREFIX=/$llvm_version/Release -DLLVM_TARGETS_TO_BUILD=X86 \
               -DBUILD_SHARED_LIBS=true -DLLVM_ENABLE_ASSERTIONS=false -DLLVM_ENABLE_RTTI=true \
@@ -40,37 +38,32 @@ RUN cmake ../ -DCMAKE_INSTALL_PREFIX=/$llvm_version/Release -DLLVM_TARGETS_TO_BU
 RUN ninja install
 
 WORKDIR /
-RUN wget http://codesynthesis.com/download/odb/2.4/odb_2.4.0-1_i386.deb
-RUN dpkg -i odb_2.4.0-1_i386.deb
-RUN wget http://codesynthesis.com/download/odb/2.4/libodb-2.4.0.tar.gz
-RUN tar xf libodb-2.4.0.tar.gz
+RUN wget http://codesynthesis.com/download/odb/2.4/odb_2.4.0-1_i386.deb && \
+    dpkg -i odb_2.4.0-1_i386.deb && rm odb_2.4.0-1_i386.deb
+RUN wget http://codesynthesis.com/download/odb/2.4/libodb-2.4.0.tar.gz && \
+    tar xf libodb-2.4.0.tar.gz && rm libodb-2.4.0.tar.gz
 WORKDIR /libodb-2.4.0
 RUN ./configure --enable-shared && make -j $(nproc) && make install
 WORKDIR /
-RUN wget http://codesynthesis.com/download/odb/2.4/libodb-pgsql-2.4.0.tar.gz
-RUN tar xf libodb-pgsql-2.4.0.tar.gz
+RUN wget http://codesynthesis.com/download/odb/2.4/libodb-pgsql-2.4.0.tar.gz && \
+    tar xf libodb-pgsql-2.4.0.tar.gz && rm libodb-pgsql-2.4.0.tar.gz
 WORKDIR /libodb-pgsql-2.4.0
 RUN ./configure --enable-shared && make -j $(nproc) && make install
 
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/usr-local-lib.conf
 RUN ldconfig
 
-RUN pip install --upgrade -v pip -i https://pypi.python.org/simple/
-RUN pip install subprocess32 lockfile sqlalchemy -i https://pypi.python.org/simple
-
+RUN pip install --upgrade -v pip subprocess32 lockfile sqlalchemy -i https://pypi.python.org/simple/
 RUN pip install pyyaml
 RUN ln -s /usr/lib/libjsoncpp.so.0 /usr/lib/libjsoncpp.so.1
 RUN updatedb
 
-RUN echo "LLVM_DIR=/$llvm_version/Release/share/llvm/cmake" >> /etc/environment
-RUN echo "LD_LIBRARY_PATH=/$llvm_version/Release/lib" >> /etc/environment
-RUN echo "LIBRARY_PATH=/usr/local/lib" >> /etc/environment
-RUN echo "PATH=$PATH:/$llvm_version/Release/bin" >> /etc/environment
-
-RUN apt-get install -y sudo gdb gawk zlib1g-dev
+RUN echo "LLVM_DIR=/$llvm_version/Release/share/llvm/cmake" >>/etc/environment
+RUN echo "LD_LIBRARY_PATH=/$llvm_version/Release/lib" >>/etc/environment
+RUN echo "LIBRARY_PATH=/usr/local/lib" >>/etc/environment
+RUN echo "PATH=$PATH:/$llvm_version/Release/bin" >>/etc/environment
 
 # Set locale to C.UTF-8 instead of us_EN.UTF-8
-RUN apt-get install -y locales
 RUN locale-gen C.UTF-8
 RUN locale -a
 RUN update-locale LANG=C.UTF-8
