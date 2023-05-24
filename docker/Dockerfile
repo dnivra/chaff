@@ -14,18 +14,18 @@ RUN apt-get install -y sudo build-essential python wget cmake gdb gawk mlocate \
 ENV release 3.6.2
 ENV llvm_version llvm-${release}
 
-RUN wget http://llvm.org/releases/$release/$llvm_version.src.tar.xz && \
+RUN wget --no-check-certificate http://llvm.org/releases/$release/$llvm_version.src.tar.xz && \
     tar -xJf $llvm_version.src.tar.xz -C $llvm_version --strip-components=1 && \
     rm $llvm_version.src.tar.xz
 
 WORKDIR /$llvm_version/tools
 ENV clang_version cfe-$release
-RUN wget http://llvm.org/releases/$release/$clang_version.src.tar.xz && \
+RUN wget --no-check-certificate http://llvm.org/releases/$release/$clang_version.src.tar.xz && \
     tar -xJf $clang_version.src.tar.xz -C clang --strip-components=1 && \
     rm $clang_version.src.tar.xz
 
 WORKDIR /$llvm_version/tools/clang/tools
-RUN wget http://llvm.org/releases/$release/clang-tools-extra-$release.src.tar.xz && \
+RUN wget --no-check-certificate http://llvm.org/releases/$release/clang-tools-extra-$release.src.tar.xz && \
     tar -xJf clang-tools-extra-$release.src.tar.xz -C extra --strip-components=1 && \
     rm clang-tools-extra-$release.src.tar.xz
 
