@@ -54,7 +54,7 @@ RUN ./configure --enable-shared && make -j $(nproc) && make install
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/usr-local-lib.conf
 RUN ldconfig
 
-RUN pip install --upgrade -v pip subprocess32 lockfile sqlalchemy -i https://pypi.python.org/simple/
+RUN pip install --upgrade -v pip subprocess32 lockfile sqlalchemy==1.3.24 -i https://pypi.python.org/simple/
 RUN pip install pyyaml
 RUN ln -s /usr/lib/libjsoncpp.so.0 /usr/lib/libjsoncpp.so.1
 RUN updatedb
