@@ -4,7 +4,8 @@ RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/2
 RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20220630T220025Z/ stretch-updates main" >> /etc/apt/sources.list
 RUN echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20220630T220025Z/ stretch-backports main" >> /etc/apt/sources.list
 RUN apt-get update && apt-get remove -y libnettle6 libelf1 && \
-    apt-get install -y zlib1g=1:1.2.8.dfsg-5
+    apt-get install -y --allow-downgrades zlib1g=1:1.2.8.dfsg-5 && \
+    apt-get autoremove -y
 RUN apt-get install -y sudo build-essential python wget cmake gdb gawk mlocate \
             vim libc++-dev  g++-multilib g++ ninja-build sudo gdb gawk\
             git jq bc python python-colorama zsh libjsoncpp-dev zlib1g-dev \
